@@ -25,24 +25,24 @@ Thumbs.db
 
 # --- Machine Learning & Data ---
 # 1. Saved Model Artifacts (These are often large and should be regenerated or stored externally)
-*.pkl
-*.joblib
+#*.pkl
+#*.joblib
 *.h5
 *.hd5
 
 # 2. Data Files (Exclude raw data files used for training)
 # If your Kaggle data is a large CSV, list it here
-data/*.csv
+# data/*.csv
 data/*.json
 # Example: If your input data is named Housing.csv
-Housing.csv 
+# Housing.csv 
 
 # 3. Notebook checkpoints/output
 .ipynb_checkpoints
 
 # --- Streamlit Specific ---
 # Streamlit cache and configuration
-.streamlit/
+# .streamlit/
 
 venv/
 .venv/
