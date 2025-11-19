@@ -54,8 +54,10 @@ Utilized Linear Regression (or the specific regressor you used) to establish the
 # Model Performance 📉
 The model was evaluated using the following metrics:
 
-- R² Score: [0.XX] - Indicates the proportion of variance in the housing prices predictable from the features.
+- R² Score: [0.657] - Indicates the proportion of variance in the housing prices predictable from the features.
 
-- Mean Absolute Error (MAE): [Value] - The average absolute difference between predicted and actual prices.
+- Mean Absolute Error (MAE): [0.190] - The average absolute difference between predicted and actual prices.
 
-- Mean Squared Error (MSE): [Value] - Measures the average of the squares of the errors
+- Mean Squared Error (MSE): [0.24] - Measures the average of the squares of the errors
+
+# Save the model 
