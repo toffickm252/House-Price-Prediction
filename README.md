@@ -61,3 +61,10 @@ The model was evaluated using the following metrics:
 - Mean Squared Error (MSE): [0.24] - Measures the average of the squares of the errors
 
 # Save the model 
+# with joblib
+
+Problems faced 
+- The python environment was having dependacy issues so i had to switch to conda envionment 
+
+- By installing Anaconda and changing the Environment Intepreter to conda.
+(base)

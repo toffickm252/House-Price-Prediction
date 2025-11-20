@@ -1,4 +1,4 @@
-# --- Imports ---
+# --- app.py ---
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -11,40 +11,38 @@ st.set_page_config(page_title="Kumasi Housing Price Prediction", page_icon=":hou
 def _max_width_(prcnt_width:int = 70):
     max_width_str = f"max-width: {prcnt_width}%;"
     st.markdown(f""" 
-                <style> 
-                .appview-container .main .block-container{{{max_width_str}}}
-                </style>    
-                """, 
-                unsafe_allow_html=True,
-    )
+        <style> 
+        .appview-container .main .block-container{{{max_width_str}}}
+        </style>    
+        """, unsafe_allow_html=True)
 
-# --- Cached Resources ---
+# --- Load Model and Scaler ---
 @st.cache_resource
 def load_model(filepath: str):
-    with st.spinner('Loading model...'):
-        return joblib.load(filepath)
+    return joblib.load(filepath)
 
 @st.cache_resource
 def load_scaler(filepath: str):
-    with st.spinner('Loading scaler...'):
-        return joblib.load(filepath)
+    return joblib.load(filepath)
 
-# --- Load Artifacts ---
+# try:
+#     model_log = load_model('house_price_model.pkl')
+#     scaler = load_scaler('scaler_transform.pkl')
+# except Exception as e:
+#     st.error(f"Error loading model or scaler: {e}")
+#     st.stop()
+
 try:
     model_log = load_model('house_price_model.pkl')
     scaler = load_scaler('scaler_transform.pkl')
 except Exception as e:
-    st.error(f"Error loading model or scaler: {e}")
+    st.error("Error loading model or scaler:")
+    st.exception(e)  # <-- this prints the REAL error
     st.stop()
 
-# --- Session State Initialization ---
-def initialize_session_states():
-    if 'prediction' not in st.session_state:
-        st.session_state['prediction'] = None
-    if 'inputs' not in st.session_state:
-        st.session_state['inputs'] = {}
-
-initialize_session_states()
+# --- Initialize Session State ---
+if 'prediction' not in st.session_state:
+    st.session_state['prediction'] = None
 
 # --- Input Function ---
 def user_input_features():
@@ -80,28 +78,29 @@ def user_input_features():
         'hotwaterheating': 1 if hotwaterheating == 'Yes' else 0,
         'airconditioning': 1 if airconditioning == 'Yes' else 0,
         'prefarea': 1 if prefarea == 'Yes' else 0,
+        'furnishingstatus_furnished': 1 if furnishingstatus == 'furnished' else 0,
         'furnishingstatus_semi-furnished': 1 if furnishingstatus == 'semi-furnished' else 0,
         'furnishingstatus_unfurnished': 1 if furnishingstatus == 'unfurnished' else 0
     }
 
-    column_order = [
+    # Feature order must match the training data
+    feature_order = [
         'area', 'bedrooms', 'bathrooms', 'stories', 'parking',
         'mainroad', 'guestroom', 'basement', 'hotwaterheating',
         'airconditioning', 'prefarea',
         'furnishingstatus_semi-furnished', 'furnishingstatus_unfurnished'
     ]
 
-    features = pd.DataFrame([data], columns=column_order)
+    features = pd.DataFrame([data], columns=feature_order)
     return features
 
-# --- Main Layout ---
+# --- Layout ---
 _max_width_(70)
 st.title("Kumasi Housing Prices Prediction 🏠")
 st.markdown("""
-##### A web application for predicting housing prices in Kumasi, Ghana.
+##### Predict housing prices in Kumasi, Ghana.
 
-This app uses a log-transformed linear regression model trained on housing data. 
-Provide house attributes, and the model will predict the expected price in Ghana Cedis (GHS).
+This app uses a log-transformed Linear Regression model trained on local housing data.
 """)
 
 # --- Input Section ---
@@ -109,8 +108,8 @@ df_input = user_input_features()
 st.subheader("User-Selected Features")
 st.write(df_input)
 
-# --- Prediction Button ---
-if st.button("Predict", use_container_width=True):
+# --- Prediction ---
+if st.button("Predict"):
     try:
         scaled_features = scaler.transform(df_input)
         log_prediction = model_log.predict(scaled_features)
@@ -121,18 +120,15 @@ if st.button("Predict", use_container_width=True):
         st.error(f"Prediction failed: {e}")
 
 # --- Display Prediction ---
-if st.session_state['prediction']:
+if st.session_state['prediction'] is not None:
     pred = st.session_state['prediction']
-    st.markdown(
-        """
+    st.markdown("""
         <style>
         [data-testid="stMetricValue"] {
             font-size: 34px;
             color: green;
         }
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
     st.metric(label="Predicted House Price", value=f"GHS {pred:,.2f}")
-    st.info("Note: The predicted price is an estimate based on the provided features and may vary in real market conditions.")
+    st.info("The predicted price is an estimate based on the provided features.")
