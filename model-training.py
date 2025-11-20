@@ -1,73 +1,114 @@
-# --- train_model.py ---
+import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression
 import joblib
 
-# --- Load Dataset ---
-data = pd.read_csv('data/Housing.csv')  # Update path if needed
+# --- 1. Load Model Artifacts ---
+try:
+    model = joblib.load('house_price_model.pkl')
+    scaler = joblib.load('scaler_transform.pkl')
+except FileNotFoundError:
+    st.error("Error: Model or Scaler files not found.")
+    st.write("Please ensure 'house_price_model.pkl' and 'scaler_transform.pkl' are in the same directory.")
+    st.stop()
 
-# --- Encode Binary Columns ---
-binary_cols = ['mainroad', 'guestroom', 'basement',
-               'hotwaterheating', 'airconditioning', 'prefarea']
-data[binary_cols] = data[binary_cols].replace({'yes': 1, 'no': 0})
-
-# --- One-Hot Encode Furnishing Status ---
-df = pd.get_dummies(data, columns=['furnishingstatus'], drop_first=False, dtype=int)
-
-# Ensure all furnishingstatus columns exist
-for col in ['furnishingstatus_furnished', 'furnishingstatus_semi-furnished', 'furnishingstatus_unfurnished']:
-    if col not in df.columns:
-        df[col] = 0
-
-data = df.copy()
-
-# --- Prepare Features and Target ---
-y = data['price']
-X = data.drop('price', axis=1)
-
-# --- Define Exact Feature Order ---
-feature_order = [
+# --- 2. Define Feature Order (Must match training) ---
+FEATURE_ORDER = [
     'area', 'bedrooms', 'bathrooms', 'stories', 'parking',
     'mainroad', 'guestroom', 'basement', 'hotwaterheating',
     'airconditioning', 'prefarea',
     'furnishingstatus_semi-furnished', 'furnishingstatus_unfurnished'
 ]
-X = X[feature_order]
 
-# --- Train-Test Split ---
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.3, random_state=42
-)
+# --- 3. Input Preparation Function ---
+def prepare_input_features(input_dict):
+    """
+    Prepares raw user input dictionary into the scaled array required by the model.
+    """
+    df = pd.DataFrame([input_dict])
 
-# --- Remove Outliers from Training Set ---
-Q1 = y_train.quantile(0.25)
-Q3 = y_train.quantile(0.75)
-IQR = Q3 - Q1
-upper_limit = Q3 + 1.5 * IQR
-y_train_filtered = y_train[y_train < upper_limit]
-X_train_filtered = X_train.loc[y_train_filtered.index]
-X_train = X_train_filtered
-y_train = y_train_filtered
+    # 3a. Handle Binary Columns ('yes': 1, 'no': 0)
+    binary_cols = ['mainroad', 'guestroom', 'basement', 
+                   'hotwaterheating', 'airconditioning', 'prefarea']
+    
+    for col in binary_cols:
+        df[col] = df[col].apply(lambda x: 1 if x == 'Yes' else 0)
 
-# --- Feature Scaling ---
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+    # 3b. Handle One-Hot Encoding for Furnishing Status
+    # 'furnished' is the baseline (0, 0)
+    status = df['furnishingstatus'].iloc[0]
+    
+    df['furnishingstatus_semi-furnished'] = 1 if status == 'Semi-Furnished' else 0
+    df['furnishingstatus_unfurnished'] = 1 if status == 'Unfurnished' else 0
+    
+    # 3c. Reorder and Select Columns
+    df_final = df[FEATURE_ORDER]
 
-# --- Log Transform Target ---
-y_train = np.log(y_train)
-y_test = np.log(y_test)
+    # 3d. Scale Features
+    input_scaled = scaler.transform(df_final)
+    
+    return input_scaled
 
-# --- Train Model ---
-model = LinearRegression()
-model.fit(X_train_scaled, y_train)
+# --- 4. Streamlit UI and Logic ---
+st.set_page_config(page_title="House Price Predictor", layout="centered")
+st.title("🏘️ Delhi Housing Price Predictor")
+st.markdown("Use the form below to enter the features of the house and get a predicted price.")
 
-# --- Save Model and Scaler ---
-joblib.dump(model, 'house_price_model.pkl')
-joblib.dump(scaler, 'scaler_transform.pkl')
+# Create the form layout using columns
+with st.form("prediction_form"):
+    st.header("🏠 House Details")
 
-print("Model and scaler saved successfully!")
-# --- Function to Prepare Input Features ---
+    # Column 1: Numerical/Quantitative Features
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        area = st.number_input("Area (sq ft)", min_value=1000, max_value=20000, value=5000)
+        bedrooms = st.slider("Bedrooms", min_value=1, max_value=6, value=3)
+        bathrooms = st.slider("Bathrooms", min_value=1, max_value=4, value=2)
+        stories = st.slider("Stories", min_value=1, max_value=4, value=2)
+        parking = st.slider("Parking Spaces", min_value=0, max_value=3, value=1)
+        
+    # Column 2: Categorical/Binary Features
+    with col2:
+        mainroad = st.selectbox("Main Road Access", ['Yes', 'No'])
+        guestroom = st.selectbox("Guest Room", ['No', 'Yes'])
+        basement = st.selectbox("Basement", ['No', 'Yes'])
+        hotwaterheating = st.selectbox("Hot Water Heating", ['No', 'Yes'])
+        airconditioning = st.selectbox("Air Conditioning", ['No', 'Yes'])
+        prefarea = st.selectbox("Preferred Area", ['No', 'Yes'])
+        
+        furnishingstatus = st.selectbox("Furnishing Status", 
+                                        ['Furnished', 'Semi-Furnished', 'Unfurnished'])
+        
+    submitted = st.form_submit_button("Get Prediction")
+
+# --- 5. Prediction Execution ---
+if submitted:
+    # 5a. Collect all inputs into a dictionary
+    raw_input_data = {
+        'area': area,
+        'bedrooms': bedrooms,
+        'bathrooms': bathrooms,
+        'stories': stories,
+        'parking': parking,
+        'mainroad': mainroad,
+        'guestroom': guestroom,
+        'basement': basement,
+        'hotwaterheating': hotwaterheating,
+        'airconditioning': airconditioning,
+        'prefarea': prefarea,
+        'furnishingstatus': furnishingstatus
+    }
+    
+    # 5b. Process Input
+    processed_features = prepare_input_features(raw_input_data)
+    
+    # 5c. Predict
+    log_price_prediction = model.predict(processed_features)
+    
+    # 5d. Inverse Transform (np.exp is crucial because the target was log-transformed)
+    actual_price_prediction = np.exp(log_price_prediction)[0]
+    
+    st.success("## 💰 Predicted House Price")
+    st.success(f"**₹ {actual_price_prediction:,.0f}**")
+    st.info("Note: The model was trained on the natural logarithm of price, so the prediction was inverse-transformed using $e^x$ to get this final rupee value.")
