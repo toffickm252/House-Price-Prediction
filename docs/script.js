@@ -1,5 +1,5 @@
 // Path to the ONNX model file
-const MODEL_PATH = './house_price_model.onnx';
+const MODEL_PATH = './model.onnx';
 
 async function run() {
     const outputDiv = document.getElementById('out');
