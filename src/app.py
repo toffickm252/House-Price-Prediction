@@ -1,80 +1,77 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import os
 
-# Load the trained model
-model = joblib.load('C:\\Users\\Surface\\OneDrive\\Documentos\\GitHub\\House-Price-Prediction\\models\\house_price_model.joblib')
-scaler = joblib.load('C:\\Users\\Surface\\OneDrive\\Documentos\\GitHub\\House-Price-Prediction\\models\\scaler_transform.joblib')
+# --- PATH SETUP ---
+current_dir = os.path.dirname(os.path.abspath(__file__))       # /src
+project_root = os.path.abspath(os.path.join(current_dir, "..")) # project root
+models_dir = os.path.join(project_root, "models")               # /models
 
-print("Model and scaler loaded successfully.")
+model_path = os.path.join(models_dir, "house_price_model.joblib")
+scaler_path = os.path.join(models_dir, "scaler_transform.joblib")
 
-st.title("House Price Predictor")
+# --- LOAD MODELS ---
+try:
+    model = joblib.load(model_path)
+    scaler = joblib.load(scaler_path)
+except FileNotFoundError:
+    st.error("Model files missing. Add them to the 'models' folder in the project root.")
+    st.stop()
+
+# --- APP INTERFACE ---
+st.title("House Price Predictor 🏠")
 
 # 1. Numerical Input
-area = st.number_input("Area (in sq ft)", value=0.0)
+area = st.number_input("Area (in sq ft)", value=500.0, min_value=100.0, max_value=10000.0, step=50.0)
+
+# 2. Count Inputs (Sliders)
+st.write("### House Details")
+col1, col2 = st.columns(2)
+with col1:
+    bedrooms = st.slider("Bedrooms", 1, 6, 3)
+    stories = st.slider("Stories", 1, 4, 2)
+with col2:
+    bathrooms = st.slider("Bathrooms", 1, 4, 1)
+    parking = st.slider("Parking Spaces", 0, 3, 0)
+
+# 3. Categorical Inputs
+st.write("### Features")
+col3, col4 = st.columns(2)
 
 # Create the translator (Dictionary)
 input_map = {'Yes': 1, 'No': 0}
 
-# Mainroad Input
-mainroad = st.selectbox("Mainroad", ["Yes", "No"])
-# if mainroad == "Yes":
-#     mainroad = 1
-# else:
-#     mainroad = 0
-mainroad_val = input_map[mainroad]
+with col3:
+    mainroad = st.selectbox("Main Road", ["Yes", "No"])
+    mainroad_val = input_map[mainroad]
 
-# Guestroom Input
-guestroom = st.selectbox("Guestroom", ["Yes", "No"])
-# if guestroom == "Yes":
-#     guestroom = 1
-# else:
-#     guestroom = 0
+    guestroom = st.selectbox("Guestroom", ["Yes", "No"])
+    guestroom_val = input_map[guestroom]
 
-guestroom_val = input_map[guestroom]
+    basement = st.selectbox("Basement", ["Yes", "No"])
+    basement_val = input_map[basement]
 
-# Airconditioning Input
-airconditioning = st.selectbox("Airconditioning", ["Yes", "No"])
-# if airconditioning == "Yes":
-#     airconditioning = 1
-# else:
-#     airconditioning = 0
-airconditioning_val = input_map[airconditioning]
+with col4:
+    hotwaterheating = st.selectbox("Hot Water Heating", ["Yes", "No"])
+    hotwaterheating_val = input_map[hotwaterheating]
 
-# Remaining Yes/No Inputs
-# basement 
-basement = st.selectbox("Basement", ["Yes", "No"])
-basement_val = input_map[basement]
-# hotwaterheating
-hotwaterheating = st.selectbox("Hot Water Heating", ["Yes", "No"])
-hotwaterheating_val = input_map[hotwaterheating]
-#Preferred Area
-prefarea = st.selectbox("Preferred Area", ["Yes", "No"])
-prefarea_val = input_map[prefarea]
+    airconditioning = st.selectbox("Air Conditioning", ["Yes", "No"])
+    airconditioning_val = input_map[airconditioning]
 
-# parking
+    prefarea = st.selectbox("Preferred Area", ["Yes", "No"])
+    prefarea_val = input_map[prefarea]
 
-
-# Furnishing Status
+# 4. Furnishing Status
+st.write("### Furnishing")
 furnishing = st.selectbox("Furnishing Status", ["Furnished", "Semi-Furnished", "Unfurnished"])
-if furnishing == "Furnished":
-    furnishing_val = 1
-elif furnishing == "Semi-Furnished":
-    furnishing_val = 2
-else:
-    furnishing_val = 3
 
-furnishingstatus_semi = 1 if furnishing_val == 2 else 0
-furnishingstatus_unfurnished = 1 if furnishing_val == 3 else 0
+# The Logic (Matches One-Hot Encoding)
+furnishingstatus_semi = 1 if furnishing == 'Semi-Furnished' else 0
+furnishingstatus_unfurnished = 1 if furnishing == 'Unfurnished' else 0
 
-st.write("### House Details")
-bedrooms = st.slider("Bedrooms", 1, 6, 3)
-bathrooms = st.slider("Bathrooms", 1, 4, 1)
-stories = st.slider("Stories", 1, 4, 2)
-parking = st.slider("Parking Spaces", 0, 3, 0)
-
-# --- 3. The Prediction Logic ---
-if st.button("Predict Price"):
+# --- PREDICTION LOGIC ---
+if st.button("Predict Price", type="primary"):
     # A. Package the inputs into a DataFrame
     # Note: These column names must match your training data exactly!
     input_data = pd.DataFrame({
@@ -94,11 +91,16 @@ if st.button("Predict Price"):
     })
 
     # B. Scale the data using the saved scaler
-    # The model expects values between 0 and 1
-    input_data_scaled = scaler.transform(input_data)
+    try:
+        input_data_scaled = scaler.transform(input_data)
+        
+        # C. Make the prediction
+        prediction = model.predict(input_data_scaled)
 
-    # C. Make the prediction
-    prediction = model.predict(input_data_scaled)
-
-    # D. Display the result
-    st.success(f"Estimated Price: ${prediction[0]:,.2f}")
+        # D. Display the result
+        st.success(f"Estimated Price: ${prediction[0]:,.2f}")
+        
+    except ValueError as e:
+        st.error(f"Error during prediction: {e}")
+        st.write("Debug - Columns expected by scaler:", scaler.feature_names_in_)
+        st.write("Debug - Input data:", input_data) 
