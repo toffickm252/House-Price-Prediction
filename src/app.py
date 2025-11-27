@@ -5,20 +5,28 @@ import os
 
 # --- PATH SETUP ---
 def load_model():
-    base_dir = os.path.dirname(__file__)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
     model_file = os.path.join(base_dir, "..", "models", "house_price_model.joblib")
     scaler_file = os.path.join(base_dir, "..", "models", "scaler_transform.joblib")
 
-    try:
-        with open(model_file, "rb") as f:
-            return joblib.load(f)
-    except FileNotFoundError:
-        st.error("Model file not found. Check the folder structure.")
-        st.stop()
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
+    # Check both files exist
+    if not os.path.exists(model_file):
+        st.error("Model file not found. Check 'models/house_price_model.joblib'.")
         st.stop()
 
+    if not os.path.exists(scaler_file):
+        st.error("Scaler file not found. Check 'models/scaler_transform.joblib'.")
+        st.stop()
+
+    # Load them
+    try:
+        model = joblib.load(model_file)
+        scaler = joblib.load(scaler_file)
+        return model, scaler
+    except Exception as e:
+        st.error(f"Error loading model or scaler: {e}")
+        st.stop()
 
 model ,scaler= load_model()
 
