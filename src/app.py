@@ -10,23 +10,32 @@ def load_model():
     model_file = os.path.join(base_dir, "..", "models", "house_price_model.joblib")
     scaler_file = os.path.join(base_dir, "..", "models", "scaler_transform.joblib")
 
-    # Check both files exist
+    # Resolve absolute paths
+    model_file = os.path.abspath(model_file)
+    scaler_file = os.path.abspath(scaler_file)
+
+    # Debug print for Streamlit Cloud
+    st.write("Model path:", model_file)
+    st.write("Scaler path:", scaler_file)
+
+    # Check existence BEFORE loading
     if not os.path.exists(model_file):
-        st.error("Model file not found. Check 'models/house_price_model.joblib'.")
+        st.error("Model file missing.")
         st.stop()
 
     if not os.path.exists(scaler_file):
-        st.error("Scaler file not found. Check 'models/scaler_transform.joblib'.")
+        st.error("Scaler file missing.")
         st.stop()
 
-    # Load them
+    # Load both
     try:
         model = joblib.load(model_file)
         scaler = joblib.load(scaler_file)
         return model, scaler
     except Exception as e:
-        st.error(f"Error loading model or scaler: {e}")
+        st.error(f"Loading error: {e}")
         st.stop()
+
 
 model ,scaler= load_model()
 
