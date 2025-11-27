@@ -4,20 +4,23 @@ import joblib
 import os
 
 # --- PATH SETUP ---
-current_dir = os.path.dirname(os.path.abspath(__file__))       # /src
-project_root = os.path.abspath(os.path.join(current_dir, "..")) # project root
-models_dir = os.path.join(project_root, "models")               # /models
+def load_model():
+    base_dir = os.path.dirname(__file__)
+    model_file = os.path.join(base_dir, "..", "models", "house_price_model.joblib")
+    scaler_file = os.path.join(base_dir, "..", "models", "scaler_transform.joblib")
 
-model_path = os.path.join(models_dir, "house_price_model.joblib")
-scaler_path = os.path.join(models_dir, "scaler_transform.joblib")
+    try:
+        with open(model_file, "rb") as f:
+            return joblib.load(f)
+    except FileNotFoundError:
+        st.error("Model file not found. Check the folder structure.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        st.stop()
 
-# --- LOAD MODELS ---
-try:
-    model = joblib.load(model_path)
-    scaler = joblib.load(scaler_path)
-except FileNotFoundError:
-    st.error("Model files missing. Add them to the 'models' folder in the project root.")
-    st.stop()
+
+model ,scaler= load_model()
 
 # --- APP INTERFACE ---
 st.title("House Price Predictor 🏠")
